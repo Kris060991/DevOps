@@ -1,0 +1,25 @@
+FROM nginx:1.27
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc libfcgi-dev build-essential curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    adduser --disabled-password --gecos '' guest
+
+WORKDIR /server
+
+COPY server/fastcgi_server.c ./
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+
+RUN gcc -std=c11 -Wall -Wextra -Werror fastcgi_server.c -o fastcgi_server -lfcgi && \
+    mkdir -p /var/cache/nginx /var/log/nginx /run /var/lib/nginx && \
+    chmod +x /server/fastcgi_server && \
+    chown guest:guest /etc/nginx/nginx.conf && \
+    chmod a+r /etc/nginx/nginx.conf && \
+    chown -R guest:guest /server /var/cache/nginx /var/log/nginx /var/lib/nginx /run
+
+USER guest
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+CMD curl -f http://localhost:81/ || exit 1
+
+CMD ./fastcgi_server & nginx -g "daemon off;"

@@ -1,0 +1,14 @@
+FROM nginx:latest
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc libfcgi-dev build-essential && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /server
+
+COPY server/fastcgi_server.c ./
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+
+RUN gcc -std=c11 -Wall -Wextra -Werror fastcgi_server.c -o fastcgi_server -lfcgi
+
+CMD ./fastcgi_server & nginx -g "daemon off;"
