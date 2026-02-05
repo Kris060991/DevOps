@@ -1,0 +1,79 @@
+---
+- name: Simple Docker app deployment
+  hosts: node01
+  become: yes
+
+  vars:
+    app_dir: /home/vagrant/app
+
+  tasks:
+    # 1. Установка Docker
+    - name: Install Docker and tools
+      apt:
+        name:
+          - docker.io
+          - docker-compose
+          - curl
+        state: present
+        update_cache: yes
+
+    # 2. Настройка Docker
+    - name: Start and enable Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+      check_mode: no
+
+    - name: Add vagrant to docker group
+      user:
+        name: vagrant
+        groups: docker
+        append: yes
+
+    # 3. Подготовка директории
+    - name: Create app directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: vagrant
+        group: vagrant
+
+    # 4. Копирование файлов
+    - name: Copy docker-compose.yml
+      copy:
+        src: "/home/vagrant/docker-compose.yml"
+        dest: "{{ app_dir }}/docker-compose.yml"
+        owner: vagrant
+        group: vagrant
+
+    - name: Copy database directory
+      copy:
+        src: "/home/vagrant/services/database/"
+        dest: "{{ app_dir }}/"
+        owner: vagrant
+        group: vagrant
+
+    # 5. Запуск приложения
+    - name: Deploy application
+      shell: |
+        cd {{ app_dir }}
+        docker-compose up -d --remove-orphans 2>/dev/null || sudo docker-compose up -d
+      become_user: vagrant
+
+    # 6. Проверка результата
+    - name: Show deployment result
+      shell: |
+        echo "=== Docker containers ==="
+        docker ps
+        echo ""
+        echo "=== Docker Compose services ==="
+        docker-compose ps
+      args:
+        chdir: "{{ app_dir }}"
+      register: deployment_result
+      changed_when: false
+
+    - name: Display deployment status
+      debug:
+        msg: "{{ deployment_result.stdout }}"

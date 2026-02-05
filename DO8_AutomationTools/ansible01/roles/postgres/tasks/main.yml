@@ -1,0 +1,34 @@
+---
+- name: Start PostgreSQL service
+  systemd:
+    name: postgresql
+    state: started
+    enabled: yes
+
+- name: Wait for PostgreSQL
+  pause:
+    seconds: 10
+
+- name: Create test database
+  shell: |
+    cd /tmp
+    sudo -u postgres createdb testdb
+
+- name: Copy and execute init.sql
+  copy:
+    src: init.sql
+    dest: /tmp/init.sql
+    owner: postgres
+    group: postgres
+
+- name: Execute init.sql
+  shell: |
+    cd /tmp
+    sudo -u postgres psql -d testdb -f /tmp/init.sql
+
+- name: Configure remote access
+  shell: |
+    # Исправляем конфиг
+    sed -i "s|^#listen_addresses = 'localhost'|listen_addresses = '\\*'|g" /etc/postgresql/14/main/postgresql.conf
+    echo "host all all 0.0.0.0/0 md5" >> /etc/postgresql/14/main/pg_hba.conf
+    systemctl restart postgresql

@@ -1,0 +1,22 @@
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    ports:
+      - "9000:9000"      # Веб-интерфейс
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - net
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager 
+
+networks:
+  net:
+    external: true
+    name: hotel-app_net    # Подключаем к сети hotel-app
+
+volumes:
+  portainer_data:

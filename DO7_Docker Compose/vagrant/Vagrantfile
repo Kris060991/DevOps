@@ -1,0 +1,44 @@
+Vagrant.configure("2") do |config|
+  # Образ для Mac M1/M2
+  config.vm.box = "gyptazy/ubuntu22.04-arm64"
+  
+  # Ассоциативный массив: имя машины => IP адрес
+  IPS = {
+    "manager01" => "192.168.195.100",
+    "worker01"  => "192.168.195.101", 
+    "worker02"  => "192.168.195.102"
+  }
+  
+  # Настройки для всех машин
+  config.vm.provider "vmware_desktop" do |vmware|
+    vmware.memory = 2048
+    vmware.cpus = 1
+    vmware.vmx["ethernet0.pcislotnumber"] = "160"
+    vmware.allowlist_verified = true
+  end
+
+  config.vm.boot_timeout = 600
+  
+  # Цикл по всем машинам
+  IPS.each do |name, ip|
+    config.vm.define name do |machine|
+      machine.vm.hostname = name
+      machine.vm.network "private_network", ip: ip
+      
+      # Копируем папку services на все машины
+      machine.vm.synced_folder "../services", "/home/vagrant/services"
+      
+      # Установка Docker на все машины
+      machine.vm.provision "shell", path: "scripts/install_docker.sh"
+      
+      # Дополнительные скрипты в зависимости от типа машины
+      if name == "manager01"
+        # Только для менеджера: инициализация Swarm
+        machine.vm.provision "shell", path: "scripts/init_swarm.sh"
+      else
+        # Для воркеров: присоединение к Swarm
+        machine.vm.provision "shell", path: "scripts/join_swarm.sh"
+      end
+    end
+  end
+end
