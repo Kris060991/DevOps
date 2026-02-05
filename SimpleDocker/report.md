@@ -72,14 +72,14 @@
 1. Пишем свой докер-образ (создаем Dockerfile)
 2. Собираем написанный докер-образ через docker build: docker build -t part4:1.0 -f Dockerfile4 .
 3. Проверяем через docker images, что все собралось корректно: docker images
-4. Запустите собранный образ Docker, сопоставив порт 81 с портом 80 на локальной машине и сопоставив папку ./nginx внутри контейнера с адресом, по которому находятся файлы конфигурации nginx: docker run -d -p 80:81 -v $(pwd)/nginx/nginx.conf:/etc/nginx/nginx.conf --name test4 part4:1.0
+4. Запустите собранный образ Docker, сопоставив порт 81 с портом 80 на локальной машине и сопоставив папку ./nginx внутри контейнера с адресом, по которому находятся файлы конфигурации nginx: docker run -d -p 80:81 -v $(pwd)/nginx/nginx.conf:/etc/nginx/nginx.conf --name test part4:1.0
 5. если не работает 4 пункт: docker rm test4
 6. Проверьте, что страница написанного мини-сервера доступна на localhost:80: curl localhost и curl localhost/status 
 7. в браузере: http://192.168.1.84 и http://192.168.1.84/status
 
-Остановить контейнер: docker stop test4
-Удалить контейнер: docker rm test4
-Чтобы удалить ненужную собрнную версию: docker rmi part4:2.0
+Остановить контейнер: docker stop test
+Удалить контейнер: docker rm test
+Чтобы удалить ненужную собрнную версию: docker rmi part4:1.0
 
 ## Часть 5. Доккл
 1. Сохраняем образ в файл: docker save -o part4_1.0.tar part4:1.0
@@ -87,8 +87,11 @@
 3. Собираем докер-образ 5: docker build -t part5:1.0 -f Dockerfile5 .
 4. Сохраняем образ в файл: docker save -o part5_1.0.tar part5:1.0
 5. Проверяем файл с игнорированием CIS-DI-0010: dockle -i CIS-DI-0010 --input part5_1.0.tar
-6. Удаляем файл: rm part4_1.0.tar
-7. Удаляем файл: rm part5_1.0.tar
+6. Запустить: docker run -d -p 80:81 --name test5 part5:1.0
+7. Остановить: docker stop test5
+8. Удалить: docker rm test5
+9. Удаляем файл: rm part4_1.0.tar
+10. Удаляем файл: rm part5_1.0.tar
 
 ## Часть 6. Базовый Docker Compose
 1. docker-compose build
