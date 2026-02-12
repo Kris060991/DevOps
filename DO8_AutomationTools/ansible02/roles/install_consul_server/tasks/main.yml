@@ -1,0 +1,70 @@
+---
+- name: Установить зависимости
+  apt:
+    name:
+      - curl
+      - wget
+      - unzip
+    state: present
+    update_cache: yes
+
+- name: Копировать архив Consul
+  copy:
+    src: "consul_1.17.0_linux_arm64.zip"
+    dest: /tmp/consul.zip
+    mode: '0644'
+
+- name: Распаковать Consul
+  unarchive:
+    src: /tmp/consul.zip
+    dest: /usr/local/bin/
+    remote_src: yes
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Проверить установку Consul
+  command: consul version
+  register: consul_version
+  changed_when: false
+
+- name: Удалить временный архив
+  file:
+    path: /tmp/consul.zip
+    state: absent
+
+- name: Создать директории
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - /opt/consul
+    - /etc/consul.d
+
+- name: Скопировать конфиг сервера
+  copy:
+    src: "consul_server.hcl"
+    dest: /etc/consul.d/consul.hcl
+
+- name: Создать systemd сервис
+  copy:
+    dest: /etc/systemd/system/consul.service
+    content: |
+      [Unit]
+      Description=Consul Server
+      After=network.target
+      
+      [Service]
+      Type=simple
+      ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/
+      Restart=on-failure
+      
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Запустить Consul
+  systemd:
+    name: consul
+    state: started
+    enabled: yes
+    daemon_reload: yes

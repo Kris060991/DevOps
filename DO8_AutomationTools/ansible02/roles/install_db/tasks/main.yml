@@ -1,0 +1,26 @@
+---
+- name: Обновить apt кеш
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Установить PostgreSQL
+  apt:
+    name: postgresql
+    state: present
+
+- name: Запустить PostgreSQL
+  systemd:
+    name: postgresql
+    state: started
+    enabled: yes
+
+- name: Создать базу данных и пользователя
+  shell: |
+    sudo -u postgres psql -c "CREATE DATABASE hotels_db;"
+    sudo -u postgres psql -c "CREATE USER hotel_user WITH PASSWORD 'hotel_password';"
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE hotels_db TO hotel_user;"
+  args:
+    executable: /bin/bash
+  register: psql_result
+  changed_when: "'already exists' not in psql_result.stdout"

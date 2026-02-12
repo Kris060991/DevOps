@@ -1,0 +1,71 @@
+Vagrant.configure("2") do |config|
+
+  config.vm.box = "gyptazy/ubuntu22.04-arm64"
+  config.vm.box_check_update = false 
+  
+  config.vm.provider "vmware_desktop" do |vmware|
+    vmware.memory = 2048  
+    vmware.cpus = 2       
+  end
+
+  config.vm.synced_folder "./services", "/home/vagrant/services"
+
+  # CONSUL SERVER 
+  config.vm.define "consul_server" do |consul|
+    consul.vm.hostname = "consul-server"
+    
+    # Проброс порта 8500 для UI Consul
+    consul.vm.network "forwarded_port", guest: 8500, host: 18500, auto_correct: true
+    
+    consul.vm.provision "shell", inline: <<-SHELL
+      apt-get update -qq
+      apt-get install -y -qq curl wget net-tools
+      echo "Consul server setup completed"
+    SHELL
+  end
+
+  # API 
+  config.vm.define "api" do |api|
+    api.vm.hostname = "api"
+    
+    # Проброс порта 8082 для будущего API
+    api.vm.network "forwarded_port", guest: 8082, host: 18082, auto_correct: true
+    
+    api.vm.provision "shell", inline: <<-SHELL
+      apt-get update -qq
+      apt-get install -y -qq curl wget net-tools mc htop
+      echo "API machine setup completed"
+    SHELL
+  end
+
+  # MANAGER  
+  config.vm.define "manager" do |mgr|
+    mgr.vm.hostname = "manager"
+    
+    mgr.vm.provision "shell", inline: <<-SHELL
+      apt-get update -qq
+      apt-get install -y -qq curl wget net-tools mc htop python3 python3-pip sshpass
+      pip3 install ansible
+      
+      # Генерация SSH ключа для Ansible
+      mkdir -p /home/vagrant/.ssh
+      ssh-keygen -t rsa -b 4096 -N "" -f /home/vagrant/.ssh/id_rsa
+      chown -R vagrant:vagrant /home/vagrant/.ssh
+      
+      echo "Ansible setup completed"
+    SHELL
+  end
+
+  # DATABASE  
+  config.vm.define "db" do |db|
+    db.vm.hostname = "db"
+
+    db.vm.network "forwarded_port", guest: 5432, host: 15432, auto_correct: true
+    
+    db.vm.provision "shell", inline: <<-SHELL
+      apt-get update -qq
+      apt-get install -y -qq curl wget net-tools mc htop
+      echo "Database machine setup completed"
+    SHELL
+  end
+end

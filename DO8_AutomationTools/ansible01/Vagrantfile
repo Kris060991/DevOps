@@ -1,0 +1,53 @@
+Vagrant.configure("2") do |config|
+
+  config.vm.box = "gyptazy/ubuntu22.04-arm64"
+  config.vm.box_check_update = false 
+  
+  config.vm.provider "vmware_desktop" do |vmware|
+    vmware.memory = 2048
+    vmware.cpus = 2
+  end
+
+  config.vm.synced_folder "../services", "/home/vagrant/services"
+
+  # Создаём первую машину с именем "manager"
+  config.vm.define "manager" do |mgr|
+    mgr.vm.hostname = "manager"
+
+    # Провиженинг - выполнение команд при создании/запуске машины, только для manager
+    mgr.vm.provision "shell", inline: <<-SHELL
+      # Обновляем список пакетов
+      apt-get update -qq
+      # Устанавливаем полезные утилиты: curl - для HTTP-запросов, wget - для скачивания файлов, net-tools - сетевые утилиты (ifconfig и др.), mc - файловый менеджер Midnight Commander, htop - мониторинг системы
+      apt-get install -y -qq curl wget net-tools mc htop
+      # Выводим сообщение о завершении
+      echo "Manager base setup completed"
+    SHELL
+  end
+
+  # Создаём вторую машину с именем "node01"
+  config.vm.define "node01" do |node|
+    node.vm.hostname = "node01"
+    # Проброс портов
+    node.vm.network "forwarded_port", guest: 8081, host: 18081, auto_correct: true
+    node.vm.network "forwarded_port", guest: 8087, host: 18087, auto_correct: true
+    node.vm.network "forwarded_port", guest: 22, host: 2222, id: "ssh", auto_correct: true
+  end
+
+  # Создаём третью машину с именем "node02"
+  config.vm.define "node02" do |node|
+    node.vm.hostname = "node02"
+
+    node.vm.network "forwarded_port", guest: 5432, host: 65433 # PostgreSQL
+  end
+end
+
+
+# Как использовать:
+# 1. vagrant up                    # запустить все машины
+# 2. vagrant ssh manager           # подключиться к manager
+# 3. vagrant ssh node01            # подключиться к node01
+# 4. vagrant ssh node02            # подключиться к node02
+# 5. vagrant port node01           # показать проброшенные порты
+# 6. vagrant halt                  # остановить все машины
+# 7. vagrant destroy -f            # удалить все машины

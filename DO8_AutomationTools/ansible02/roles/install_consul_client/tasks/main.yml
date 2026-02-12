@@ -1,0 +1,121 @@
+---
+- name: Установить системные пакеты
+  apt:
+    name:
+      - curl
+      - wget
+      - unzip
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: yes
+
+- name: Копировать архив Consul
+  copy:
+    src: "consul_1.17.0_linux_arm64.zip"
+    dest: /tmp/consul.zip
+    mode: '0644'
+
+- name: Распаковать Consul
+  unarchive:
+    src: /tmp/consul.zip
+    dest: /usr/local/bin/
+    remote_src: yes
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Установить Docker
+  apt:
+    name:
+      - docker.io
+      - docker-compose
+    state: present
+    update_cache: yes
+
+- name: Загрузить образ Envoy для ARM
+  docker_image:
+    name: envoyproxy/envoy:v1.28-latest
+    source: pull
+
+- name: Создать сервис Envoy через Docker
+  copy:
+    dest: /etc/systemd/system/consul-envoy.service
+    content: |
+      [Unit]
+      Description=Consul Envoy (Docker)
+      After=consul.service docker.service
+      Requires=consul.service docker.service
+      
+      [Service]
+      Type=simple
+      ExecStart=/usr/bin/docker run --network=host envoyproxy/envoy:v1.28-latest --config-path /etc/consul.d/envoy-bootstrap.json
+      Restart=on-failure
+      
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Удалить временные файлы
+  file:
+    path: /tmp/consul.zip
+    state: absent
+
+- name: Создать рабочие директории
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - /opt/consul
+    - /etc/consul.d
+
+- name: Скопировать конфиг клиента
+  template:
+    src: consul_client.hcl.j2
+    dest: /etc/consul.d/consul.hcl
+
+- name: Создать сервис Consul
+  copy:
+    dest: /etc/systemd/system/consul.service
+    content: |
+      [Unit]
+      Description=Consul Client
+      After=network.target
+      
+      [Service]
+      Type=simple
+      ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/
+      Restart=on-failure
+      
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Создать простой конфиг Envoy
+  copy:
+    dest: /etc/consul.d/envoy-bootstrap.json
+    content: |
+      {
+        "admin": {
+          "address": {
+            "socket_address": {
+              "address": "0.0.0.0",
+              "port_value": 19000
+            }
+          }
+        }
+      }
+
+- name: Запустить и включить сервисы
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  loop:
+    - consul
+    - consul-envoy
+
+- name: Проверить работу Consul
+  command: consul members
+  register: consul_status
+  changed_when: false
+  failed_when: false

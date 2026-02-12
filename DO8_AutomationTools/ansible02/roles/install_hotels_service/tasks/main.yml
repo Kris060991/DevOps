@@ -1,0 +1,54 @@
+---
+- name: Обновить apt кеш
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Установить Java 8
+  apt:
+    name: openjdk-8-jdk
+    state: present
+
+- name: Проверить версию Java
+  command: java -version
+  register: java_version
+  changed_when: false
+  ignore_errors: true
+
+- name: Создать директорию для приложения
+  file:
+    path: /opt/hotels-service
+    state: directory
+
+- name: Скопировать исходный код сервиса
+  copy:
+    src: "../../../services/"
+    dest: /opt/hotels-service
+    remote_src: no
+
+- name: Установить переменные окружения в /etc/environment
+  lineinfile:
+    path: /etc/environment
+    line: "{{ item }}"
+    state: present
+  loop:
+    - 'POSTGRES_HOST="127.0.0.1"'
+    - 'POSTGRES_PORT="5432"'
+    - 'POSTGRES_DB="hotels_db"'
+    - 'POSTGRES_USER="hotel_user"'
+    - 'POSTGRES_PASSWORD="hotel_password"'
+
+- name: Найти jar файл
+  find:
+    paths: /opt/hotels-service
+    patterns: "*.jar"
+    recurse: yes
+  register: jar_files
+
+- name: Запустить jar файл
+  command: |
+    java -jar {{ jar_files.files[0].path }}
+  async: 60
+  poll: 0
+  register: java_process
+  ignore_errors: true

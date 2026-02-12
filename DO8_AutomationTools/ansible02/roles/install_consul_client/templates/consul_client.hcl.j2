@@ -1,0 +1,61 @@
+# consul_client.hcl.j2
+datacenter = "dc1"
+data_dir = "/opt/consul"
+
+# Режим клиента
+server = false
+
+# Настройки сети
+bind_addr = "0.0.0.0"
+advertise_addr = "{{ ansible_default_ipv4.address }}"
+
+# Подключаемся к серверу
+retry_join = ["192.168.94.209"]
+
+# UI отключен на клиентах
+ui = false
+
+# Порты
+ports {
+  http = 8500
+  https = -1
+  grpc = 8502
+  dns = 8600
+}
+
+connect {
+  enabled = true
+}
+
+{% if inventory_hostname in ['api'] %}
+service {
+  name = "hotels-api"
+  tags = ["java", "rest-api", "hotels"]
+  port = 8082
+  
+  check {
+    name = "api-health"
+    http = "http://localhost:8082"
+    interval = "10s"
+    timeout = "2s"
+  }
+}
+{% elif inventory_hostname in ['db'] %}
+service {
+  name = "postgres-db"
+  tags = ["postgresql", "database", "hotels_db"]
+  port = 5432
+  address = "{{ ansible_default_ipv4.address }}"
+  
+  check {
+    name = "postgres-health"
+    tcp = "localhost:5432"
+    interval = "10s"
+    timeout = "1s"
+  }
+}
+{% endif %}
+
+# Логи
+log_level = "INFO"
+enable_syslog = false

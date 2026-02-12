@@ -1,0 +1,32 @@
+---
+# Определяем группу 'all' (все хосты)
+all:
+
+  # Секция хостов
+  hosts:
+
+    # Хост с именем 'api'
+    api:
+      # IP адрес или доменное имя хоста
+      ansible_host: 192.168.94.207
+      # Пользователь для подключения по SSH
+      ansible_user: vagrant
+      # Путь к приватному SSH ключу на manager
+      ansible_ssh_private_key_file: /home/vagrant/.ssh/id_rsa
+
+    # Хост с именем 'db'
+    db:
+      ansible_host: 192.168.94.206
+      ansible_user: vagrant
+      ansible_ssh_private_key_file: /home/vagrant/.ssh/id_rsa
+
+    # Хост с именем 'consul-server'
+    consul_server:
+      ansible_host: 192.168.94.209
+      ansible_user: vagrant
+      ansible_ssh_private_key_file: /home/vagrant/.ssh/id_rsa
+
+  # Глобальные переменные для всех хостов в группе 'all'
+  vars:
+    # Дополнительные аргументы для SSH команды
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'

@@ -1,0 +1,23 @@
+---
+- name: Установка Consul сервера
+  hosts: consul_server
+  become: yes
+  tags: consul_server
+  roles:
+    - install_consul_server
+
+- name: Установка Consul клиентов и Установка базы данных
+  hosts: db
+  become: yes
+  tags: db
+  roles:
+    - install_consul_client
+    - install_db
+
+- name: Установка сервиса отелей
+  hosts: api
+  become: yes
+  tags: api
+  roles:
+    - install_consul_client
+    - install_hotels_service
